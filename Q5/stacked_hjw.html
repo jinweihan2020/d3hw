@@ -3,10 +3,10 @@
 	<head>
 		<meta charset="utf-8">
 		<title>HW2 Q5 Stacked bar plot</title>
-		<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
-		<script type="text/javascript" src="../lib/d3-scale-chromatic.v1.min.js"></script> 
+		<script type="text/javascript" src="../lib/d3.js"></script>
+		<script type="text/javascript" src="../lib/d3-scale-chromatic.v1.min.js"></script>
 		<style type="text/css">
- 
+
 body {
   font: 10px sans-serif;
 }
@@ -35,63 +35,136 @@ body {
   stroke: #000;
   shape-rendering: crispEdges;
 }
- 
+
 .bar {
   fill: steelblue;
 }
- 
-.x.axis path {
-  display: none;
-}
 
-/* drop down select box: use css to adjust position */
-.selection {  
-	position: absolute;
-	width: 60px;
-	left: 120px;
-	top: 35px;
-}
- 
+
 		</style>
 	</head>
 	<body>
-		<div class="select_box">
-			<select class="selection"></select>
-		</div>
 		<script type="text/javascript">
 
-		  	var data = [];
-						
-			var key_rank = {'7.0+':'Rank3',  '6_6.9':'Rank2', '5_5.9':'Rank1',};
-			var margin = {top: 50, right: 100, bottom: 100, left: 100},
-			w = 950 - margin.left - margin.right, 
-			h = 600 - margin.top - margin.bottom; 
+			var OverAllStartTime = Number.MAX_VALUE;
+			var OverAllEndTime = 0;
+
+			d3.json("/Q5/rum_log.json", function(data) {
+				var viewModelData = convertData(data);
+				console.log(viewModelData);
+				showStackedChart(viewModelData)
+			});
+
+			function convertData(jsonData) {
+				var viewModelData = [];
+				jsonData.forEach(function (dataModelItem) {
+					if (dataModelItem.eventInfo.eventName !== "NativePageLoadEvent") {
+						return;
+					}
+					if (dataModelItem.eventInfo.topicName !== "NativePageLoadEvent") {
+						return;
+					}
+
+					console.log(dataModelItem);
+					var viewModelItem = {};
+					viewModelItem.pageLoadStartTime = dataModelItem.eventBody.pageLoadStartTimestamp;
+					viewModelItem.pageLoadEndTime = dataModelItem.eventBody.pageLoadStartTimestamp +
+							dataModelItem.eventBody.pageLoadDuration;
+					viewModelItem.pageLoadTime = viewModelItem.pageLoadEndTime - viewModelItem.pageLoadStartTime;
+
+					viewModelItem.pageKey = dataModelItem.eventBody.initializationPageKey +
+							(viewModelItem.pageLoadStartTime%1000);
+
+					if(OverAllStartTime > viewModelItem.pageLoadStartTime) {
+						OverAllStartTime = viewModelItem.pageLoadStartTime;
+					}
+					if(OverAllEndTime < viewModelItem.pageLoadEndTime) {
+						OverAllEndTime = viewModelItem.pageLoadEndTime;
+					}
+
+					viewModelItem.networkStartTime = Number.MAX_VALUE;
+					viewModelItem.networkEndTime = 0;
+
+					// assume only one network request.
+					// if we have many, we should draw a sub plot
+					dataModelItem.eventBody.networkEventEntries.forEach(function (networkEventEntry) {
+						networkEventEntry.networkTimingEntries.forEach(function(networkTiming) {
+							var phase = networkTiming.networkPhase;
+							if ("REQUEST" === phase) {
+								if (viewModelItem.networkStartTime > networkTiming.startTimestamp) {
+									viewModelItem.networkStartTime = networkTiming.startTimestamp;
+								}
+							} else if ("FIRST_BYTE" === phase) {
+								if (viewModelItem.networkEndTime < networkTiming.startTimestamp
+										- networkTiming.duration) {
+									viewModelItem.networkEndTime = networkTiming.startTimestamp;
+								}
+							}
+						})
+					});
+
+
+					// viewModelItem.networkDetail = dataModelItem.eventBody.networkEventEntries;
+					dataModelItem.eventBody.dataProcessingEventEntries.forEach(function (dataProcessingEventEntry) {
+						dataProcessingEventEntry.dataProcessingTimingEntries.forEach(function (dataProcessingTiming) {
+							if ("PARSE" === dataProcessingTiming.dataProcessingPhase) {
+								viewModelItem.parseStartTime = dataProcessingTiming.startTimestamp;
+								viewModelItem.parseEndTime = dataProcessingTiming.startTimestamp
+										+ dataProcessingTiming.duration;
+							}else if ("TRANSFORM" === dataProcessingTiming.dataProcessingPhase) {
+								viewModelItem.transformStartTime = dataProcessingTiming.startTimestamp;
+								viewModelItem.transformEndTime = dataProcessingTiming.startTimestamp
+										+ dataProcessingTiming.duration;
+							}else if ("BIND" === dataProcessingTiming.dataProcessingPhase) {
+								viewModelItem.bindStartTime = dataProcessingTiming.startTimestamp;
+								viewModelItem.bindEndTime = dataProcessingTiming.startTimestamp
+										+ dataProcessingTiming.duration;
+							}
+						})
+					});
+
+					viewModelItem.gapStartNetwork = viewModelItem.networkStartTime - viewModelItem.pageLoadStartTime;
+					viewModelItem.networkTime = viewModelItem.networkEndTime - viewModelItem.networkStartTime;
+					viewModelItem.gapNetworkParse = viewModelItem.parseStartTime - viewModelItem.networkEndTime;
+					viewModelItem.parseTime = viewModelItem.parseEndTime - viewModelItem.parseStartTime;
+					viewModelItem.gapParseTransform = viewModelItem.transformStartTime - viewModelItem.parseEndTime;
+					viewModelItem.transformTime = viewModelItem.transformEndTime - viewModelItem.transformStartTime;
+					viewModelItem.gapTransformBind = viewModelItem.bindStartTime - viewModelItem.transformEndTime;
+					viewModelItem.bindTime = viewModelItem.bindEndTime - viewModelItem.bindStartTime;
+
+					viewModelData.push(viewModelItem);
+				});
+				return viewModelData;
+			}
+
+
+			var PHASES_NAME_MAP = {
+				'gapStartNetwork' :'gapStartNetwork',
+				'networkTime' :'networkTime',
+				'gapNetworkParse' :'gapNetworkParse',
+				'parseTime':'parseTime',
+				'gapParseTransform':'gapParseTransform',
+				'transformTime':'transformTime',
+				'gapTransformBind':'gapTransformBind',
+				'bindTime' :'bindTime'
+			};
+
+			let PHASES = Object.keys(PHASES_NAME_MAP);
+
+			console.log(PHASES);
+
+			var margin = {top: 50, right: 150, bottom: 100, left: 150},
+			w = 1050 - margin.left - margin.right,
+			h = 600 - margin.top - margin.bottom;
 
 			var legend_w = 20,
-			    legend_h = 10,  // legend size	  
-			    legend_x = w * 0.85, // legend position
+			    legend_h = 10,  // legend size
+			    legend_x = w + 20, // legend position
 			    legend_y = margin.top / 15;
-
-			//-------------- Create SVG element for select box --------------------
-			var svg_select = d3.select("body").select(".select_box")
-						.append("svg")
-							.attr("width", w + margin.left + margin.right)
-							.attr("height", margin.top)
-						.append("g")
-							.attr("transform", "translate(" + margin.left + "," + "0)");
-
-			svg_select.append("text")
-				.text("Select year: ")
-				.attr("class", "label")
-				.attr("x", 0)
-				.attr("y", 40)
-				.attr("font-family", "sans-serif")
-				.attr("font-size", "13px")
-				.style("text-anchor", "end");
 
 			var select = d3.select(".selection")
 						.on('change',onchange)
-			
+
 			//-------------- Create SVG element for stacked bar plot --------------------
 			var svg = d3.select("body")
 						.append("svg")
@@ -99,93 +172,94 @@ body {
 							.attr("height", h + margin.top + margin.bottom)
 						.append("g")
 							.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-			
-			function showStackedChart(raw_data, selectYear) {
+
+			function showStackedChart(viewModelData) {
 		        svg.selectAll("*").remove(); // clear content of svg
-				var dataset = raw_data.filter(function (e) {	
-				    return e.Year == selectYear;
+				var dataset = viewModelData
+
+				let pageKeys = dataset.map(function(d) { return d.pageKey; })
+
+				phases_sum = dataset.map(function(d) {
+					return d.gapStartNetwork + d.networkTime + d.gapNetworkParse + d.parseTime
+							+ d.gapParseTransform+ d.transformTime+ d.gapTransformBind+ d.bindTime;
 				});
 
-				states = dataset.map(function(d) { return d.State; })
-				group_sum = dataset.map(function(d) {
-					return d.Rank1 + d.Rank2 + d.Rank3;
-				})
- 
-				var rank_keys = [ "Rank3", "Rank2", "Rank1" ]
 				//Set up stack method
 				var stack = d3.stack()
-							  .keys(rank_keys)
+							  .keys(PHASES)
 							  .order(d3.stackOrderNone);  // <-- Flipped stacking order
 
 				//Data, stacked
 				var series = stack(dataset);
 
 				//Set up scales
-				var xScale = d3.scaleBand()
-					.domain(dataset.map(function(d) { return d.State; }))
-					.range([0, w])
+				var yScale = d3.scaleBand()
+					.domain(dataset.map(function(d) { return d.pageKey; }))
+					.range([0, h])
 					.padding(0.1);
-			
-				var yScale = d3.scaleLinear()
-					.domain([0,		
+
+				var xScale = d3.scaleLinear()
+					.domain([0,
 						d3.max(dataset, function(d) {
-							var max = d.Rank1 + d.Rank2 + d.Rank3;
+							var max = d.gapStartNetwork + d.networkTime + d.gapNetworkParse + d.parseTime
+									+ d.gapParseTransform+ d.transformTime+ d.gapTransformBind+ d.bindTime;
 							return Math.ceil(max/10.0) * 10;
 						})
 					])
-					.range([h, 0]);
-					
-				var colors_codes = {"Rank1": "#f2b447", "Rank2":"#d25c4d", "Rank3":"#b33040"}
+					.range([0, w]);
+
+				var colors_codes = {
+					"gapStartNetwork": "#ffdff7",
+					"networkTime": "#714ed2",
+					"gapNetworkParse": "#ffffff",
+					"parseTime": "#b447f2",
+					"gapParseTransform": "#ffffff",
+					"transformTime": "#f2b447",
+					"gapTransformBind":"#ffffff",
+					"bindTime": "#ffdd33"
+				};
+
 				var colors = Object.values(colors_codes);
 
-			    var xAxis = d3.axisBottom()
-			    	.scale(xScale);
+			    var yAxis = d3.axisLeft()
+			    	.scale(yScale);
 
-				var yAxis = d3.axisLeft()
-				    .scale(yScale)
+				var xAxis = d3.axisBottom()
+				    .scale(xScale)
 				    .ticks(10, ".1s");
-
-				svg.append("g")
-				  .attr("class", "x axis")
-				  .attr("transform", "translate(0," + h + ")")
-				  .call(xAxis);
-
-				svg.append("g")
-				  .attr("class", "y axis")
-				  .call(yAxis)
 
 				// Add a group for each row of data
 				var groups = svg.selectAll(".data_row")
 					.data(series)
 					.enter()
-					.append("g")      
+					.append("g")
 					.style("fill", function(d, i) {
-						return colors_codes[rank_keys[i]];
+						return colors_codes[PHASES[i]];
 					});
-						
+
 				svg.append("text")  // y text label
 				    .attr("class", "label")
 				    .attr("transform", "rotate(-90)")
 				    .attr("x", - h / 3)
-				    .attr("y", - margin.left / 2)
+				    .attr("y", - margin.left *0.8)
 				    .style("text-anchor", "middle")
-				    .text("Number of Earthquakes");
+				    .text("Phase in Page Load");
 
 				svg.append("text")  // x text label
 				    .attr("class", "label")
 				    .attr("transform", "translate(" + (w / 2) + " ," + (h + margin.bottom/2) + ")")
 				    .style("text-anchor", "middle")
-				    .text("State");
+				    .text("Page Key");
 
     			svg.selectAll(".data_row")
-					.data(group_sum)
+					.data(phases_sum)
 					.enter()
 					.append("text")
-				    .attr("x", function(d, i){
-						return xScale(states[i]) + xScale.bandwidth()/2;
-				    })
 				    .attr("y", function(d, i){
-				    	return yScale(group_sum[i]) - 5;
+						return yScale(pageKeys[i]) + yScale.bandwidth()/2;
+				    })
+				    .attr("x", function(d, i){
+				    	return xScale(phases_sum[i]) - 5;
 				    })
 				    .attr("text-anchor", "middle")
 				    .text(function(d, i){
@@ -194,25 +268,32 @@ body {
 
 				// Add a rect for each data value
 				var rects = groups.selectAll("rect")
-					.data(function(d) { 
+					.data(function(d) {
 						return d; })
 					.enter()
 					.append("rect")
-					.attr("x", function(d, i) {
-						return xScale(states[i]);
+					.attr("y", function(d, i) {
+						return yScale(pageKeys[i]);
 					})
-					.attr("y", function(d) {
-						return yScale(d[1]);  // <-- Changed y value
+					.attr("x", function(d) {
+						return xScale(d[0]);  // <-- Changed y value
 					})
-					.attr("height", function(d) {
-						return yScale(d[0]) - yScale(d[1]);  // <-- Changed height value
-					})
-					.attr("width", xScale.bandwidth());
+					.attr("height", yScale.bandwidth())
+					.attr("width", function(d) {
+						return xScale(d[1]) - xScale(d[0]);  // <-- Changed height value
+					});
 
-				rank_keys = [ "Rank3", "Rank2", "Rank1" ]
+				svg.append("g")
+						.attr("class", "x axis")
+						.attr("transform", "translate(0," + h + ")")
+						.call(xAxis);
+
+				svg.append("g")
+						.attr("class", "y axis")
+						.call(yAxis)
 
 				svg.selectAll("legend_circle")
-				    .data(rank_keys)
+				    .data(PHASES)
 				    .enter()
 				    .append("circle")
 				        .attr("cx", legend_x)
@@ -224,13 +305,13 @@ body {
 				        )
 
 				svg.selectAll("legend_labels")
-				    .data(rank_keys)
+				    .data(PHASES)
 				    .enter()
 				    .append("text")
 				        .attr("class", "legend_labels")
 				        .attr("x", legend_x + legend_w / 2)
 				        .attr("y", function(d,i){ return legend_y + 5 + i*(legend_h+5)})
-				        .text(function(d,i){ return Object.keys(key_rank)[i]})
+				        .text(function(d,i){ return Object.keys(PHASES_NAME_MAP)[i]})
 				        .attr("text-anchor", "left")
 
 				svg.append("text")
@@ -238,50 +319,15 @@ body {
 				    .attr("x", w/2)
 				    .attr("y", -margin.top*0.6)
 				    .attr("text-anchor", "middle")
-				    .text("Visualizing Earthquake Counts by State");
+				    .text("Page load time details");
 
-				svg.append("text")
-					.text("hli403")
-					.attr("class", "username")
-					.attr("x", w + margin.left)
-					.attr("y", h + margin.bottom - 2)
-					.attr("text-anchor", "end")
-					.attr("font-family", "sans-serif")
-					.attr("font-size", "13px");
 			};
 
 
 
 
-			function changeColumnName(d){
-			    Object.keys(d).forEach(function(origProp) {
-			    	if(origProp in key_rank) {
-			    	  d[key_rank[origProp]] = +d[origProp];
-			          delete d[origProp];
-			    	}
-				});
-				return d;
-			};
 
 
-
-			function onchange() {
-				selectValue = d3.select('select').property('value')
-				showStackedChart(data, selectValue);
-			};
-
-			d3.csv("earthquake.csv", changeColumnName)
-				.then(function(rows) {
-				data = rows;
-				const unique = [...new Set(rows.map(item => item.Year))];
-				
-				var options = select
-					.selectAll('option')
-					.data(unique).enter()
-					.append('option')
-					.text(function (d) { return d; });
-				showStackedChart(data, unique[0])
-			});
 		</script>
 	</body>
 </html>
