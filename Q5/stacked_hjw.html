@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>HW2 Q5 Stacked bar plot</title>
+		<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+		<script type="text/javascript" src="../lib/d3-scale-chromatic.v1.min.js"></script> 
+		<style type="text/css">
+ 
+body {
+  font: 10px sans-serif;
+}
+
+.title {
+    font-family: sans-serif;
+    font-size: 20px;
+    fill: black;
+}
+
+
+.legend_labels {
+    font-family: sans-serif;
+    font-size: 12px;
+    fill: black;
+}
+/* axis label */
+.label {
+    font-family: Helvetica, sans-serif;
+    font-size: 15px;
+    fill: black;
+}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+ 
+.bar {
+  fill: steelblue;
+}
+ 
+.x.axis path {
+  display: none;
+}
+
+/* drop down select box: use css to adjust position */
+.selection {  
+	position: absolute;
+	width: 60px;
+	left: 120px;
+	top: 35px;
+}
+ 
+		</style>
+	</head>
+	<body>
+		<div class="select_box">
+			<select class="selection"></select>
+		</div>
+		<script type="text/javascript">
+
+		  	var data = [];
+						
+			var key_rank = {'7.0+':'Rank3',  '6_6.9':'Rank2', '5_5.9':'Rank1',};
+			var margin = {top: 50, right: 100, bottom: 100, left: 100},
+			w = 950 - margin.left - margin.right, 
+			h = 600 - margin.top - margin.bottom; 
+
+			var legend_w = 20,
+			    legend_h = 10,  // legend size	  
+			    legend_x = w * 0.85, // legend position
+			    legend_y = margin.top / 15;
+
+			//-------------- Create SVG element for select box --------------------
+			var svg_select = d3.select("body").select(".select_box")
+						.append("svg")
+							.attr("width", w + margin.left + margin.right)
+							.attr("height", margin.top)
+						.append("g")
+							.attr("transform", "translate(" + margin.left + "," + "0)");
+
+			svg_select.append("text")
+				.text("Select year: ")
+				.attr("class", "label")
+				.attr("x", 0)
+				.attr("y", 40)
+				.attr("font-family", "sans-serif")
+				.attr("font-size", "13px")
+				.style("text-anchor", "end");
+
+			var select = d3.select(".selection")
+						.on('change',onchange)
+			
+			//-------------- Create SVG element for stacked bar plot --------------------
+			var svg = d3.select("body")
+						.append("svg")
+							.attr("width", w + margin.left + margin.right)
+							.attr("height", h + margin.top + margin.bottom)
+						.append("g")
+							.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+			
+			function showStackedChart(raw_data, selectYear) {
+		        svg.selectAll("*").remove(); // clear content of svg
+				var dataset = raw_data.filter(function (e) {	
+				    return e.Year == selectYear;
+				});
+
+				states = dataset.map(function(d) { return d.State; })
+				group_sum = dataset.map(function(d) {
+					return d.Rank1 + d.Rank2 + d.Rank3;
+				})
+ 
+				var rank_keys = [ "Rank3", "Rank2", "Rank1" ]
+				//Set up stack method
+				var stack = d3.stack()
+							  .keys(rank_keys)
+							  .order(d3.stackOrderNone);  // <-- Flipped stacking order
+
+				//Data, stacked
+				var series = stack(dataset);
+
+				//Set up scales
+				var xScale = d3.scaleBand()
+					.domain(dataset.map(function(d) { return d.State; }))
+					.range([0, w])
+					.padding(0.1);
+			
+				var yScale = d3.scaleLinear()
+					.domain([0,		
+						d3.max(dataset, function(d) {
+							var max = d.Rank1 + d.Rank2 + d.Rank3;
+							return Math.ceil(max/10.0) * 10;
+						})
+					])
+					.range([h, 0]);
+					
+				var colors_codes = {"Rank1": "#f2b447", "Rank2":"#d25c4d", "Rank3":"#b33040"}
+				var colors = Object.values(colors_codes);
+
+			    var xAxis = d3.axisBottom()
+			    	.scale(xScale);
+
+				var yAxis = d3.axisLeft()
+				    .scale(yScale)
+				    .ticks(10, ".1s");
+
+				svg.append("g")
+				  .attr("class", "x axis")
+				  .attr("transform", "translate(0," + h + ")")
+				  .call(xAxis);
+
+				svg.append("g")
+				  .attr("class", "y axis")
+				  .call(yAxis)
+
+				// Add a group for each row of data
+				var groups = svg.selectAll(".data_row")
+					.data(series)
+					.enter()
+					.append("g")      
+					.style("fill", function(d, i) {
+						return colors_codes[rank_keys[i]];
+					});
+						
+				svg.append("text")  // y text label
+				    .attr("class", "label")
+				    .attr("transform", "rotate(-90)")
+				    .attr("x", - h / 3)
+				    .attr("y", - margin.left / 2)
+				    .style("text-anchor", "middle")
+				    .text("Number of Earthquakes");
+
+				svg.append("text")  // x text label
+				    .attr("class", "label")
+				    .attr("transform", "translate(" + (w / 2) + " ," + (h + margin.bottom/2) + ")")
+				    .style("text-anchor", "middle")
+				    .text("State");
+
+    			svg.selectAll(".data_row")
+					.data(group_sum)
+					.enter()
+					.append("text")
+				    .attr("x", function(d, i){
+						return xScale(states[i]) + xScale.bandwidth()/2;
+				    })
+				    .attr("y", function(d, i){
+				    	return yScale(group_sum[i]) - 5;
+				    })
+				    .attr("text-anchor", "middle")
+				    .text(function(d, i){
+				    		return d;
+				    });
+
+				// Add a rect for each data value
+				var rects = groups.selectAll("rect")
+					.data(function(d) { 
+						return d; })
+					.enter()
+					.append("rect")
+					.attr("x", function(d, i) {
+						return xScale(states[i]);
+					})
+					.attr("y", function(d) {
+						return yScale(d[1]);  // <-- Changed y value
+					})
+					.attr("height", function(d) {
+						return yScale(d[0]) - yScale(d[1]);  // <-- Changed height value
+					})
+					.attr("width", xScale.bandwidth());
+
+				rank_keys = [ "Rank3", "Rank2", "Rank1" ]
+
+				svg.selectAll("legend_circle")
+				    .data(rank_keys)
+				    .enter()
+				    .append("circle")
+				        .attr("cx", legend_x)
+				        .attr("cy", function(d,i){ return legend_y + i*(legend_h+5)})
+				        .attr("r", 4)
+				        .style("fill", function(d, i){
+					         return colors_codes[d]
+				         }
+				        )
+
+				svg.selectAll("legend_labels")
+				    .data(rank_keys)
+				    .enter()
+				    .append("text")
+				        .attr("class", "legend_labels")
+				        .attr("x", legend_x + legend_w / 2)
+				        .attr("y", function(d,i){ return legend_y + 5 + i*(legend_h+5)})
+				        .text(function(d,i){ return Object.keys(key_rank)[i]})
+				        .attr("text-anchor", "left")
+
+				svg.append("text")
+				    .attr("class", "title")
+				    .attr("x", w/2)
+				    .attr("y", -margin.top*0.6)
+				    .attr("text-anchor", "middle")
+				    .text("Visualizing Earthquake Counts by State");
+
+				svg.append("text")
+					.text("hli403")
+					.attr("class", "username")
+					.attr("x", w + margin.left)
+					.attr("y", h + margin.bottom - 2)
+					.attr("text-anchor", "end")
+					.attr("font-family", "sans-serif")
+					.attr("font-size", "13px");
+			};
+
+
+
+
+			function changeColumnName(d){
+			    Object.keys(d).forEach(function(origProp) {
+			    	if(origProp in key_rank) {
+			    	  d[key_rank[origProp]] = +d[origProp];
+			          delete d[origProp];
+			    	}
+				});
+				return d;
+			};
+
+
+
+			function onchange() {
+				selectValue = d3.select('select').property('value')
+				showStackedChart(data, selectValue);
+			};
+
+			d3.csv("earthquake.csv", changeColumnName)
+				.then(function(rows) {
+				data = rows;
+				const unique = [...new Set(rows.map(item => item.Year))];
+				
+				var options = select
+					.selectAll('option')
+					.data(unique).enter()
+					.append('option')
+					.text(function (d) { return d; });
+				showStackedChart(data, unique[0])
+			});
+		</script>
+	</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>HW2Q3 Line charts</title>
+		<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+		<!-- <script type="text/javascript" src="../lib/d3-tip.min.js"></script>
+		<script type="text/javascript" src="../lib/topojson.v2.min.js"></script>
+		<script type="text/javascript" src="../lib/d3-simple-slider.min.js"></script>
+		<script type="text/javascript" src="../lib/d3-scale-chromatic.v1.min.js"></script>
+		<script type="text/javascript" src="../lib/d3-fetch.min.js"></script>
+		<script type="text/javascript" src="../lib/d3-dsv.min.js"></script> -->
+		<link rel="stylesheet" type="text/css" href="linecharts.css">
+		<style></style>
+	</head>
+	<body>
+		<script type="text/javascript">
+
+			//Width and height
+			// Use the margin convention practice 
+			var margin = {top: 50, right: 100, bottom: 50, left: 100},
+  				w = 1100 - margin.left - margin.right, // Use the window's width 
+  				h = 550 - margin.top - margin.bottom; // Use the window's height
+
+			var legend_w = 20,
+				legend_h = 10;  // legend size	  
+				legend_x = w + 20, // legend position
+				legend_y = 80
+
+			var parseTime = d3.timeParse("%Y");  //For converting strings to Dates
+			var formatTime = d3.timeFormat("%Y");  //For converting Dates to strings
+
+			var colors = {'5_5.9': '#FFC300', '6_6.9': '#FF5733', '7_7.9': '#C70039', '8.0+': '#900C3F'};
+			var eqkeys = Object.keys(colors);
+
+			var dataset = d3.csv("earthquakes.csv");
+			dataset.then(function(data) {
+
+				// Print data to console as table, for verification
+				// console.log(dataset);
+				var eqs = eqkeys.map(function(eq) {
+					return {
+						eq: eq,
+						values: data.map(function(d) {
+							return {
+								year: parseTime(d.year),
+								nums: +d[eq]
+							}
+						})
+					}
+				})
+				//Create scale functions
+				var xScale = d3.scaleTime()
+							   .domain(d3.extent(data, function(d){return parseTime(d.year)}))
+							   .range([0, w]);
+
+				var yScale_linear = d3.scaleLinear()
+								.domain([0, d3.max(eqs, function(c) { return d3.max(c.values, function(v) { return v.nums; }); })])
+								.range([h, 0]);
+
+				//Define axes
+				var xAxis = d3.axisBottom()
+						   .scale(xScale)
+						   .ticks(10)
+						   .tickFormat(formatTime);
+
+				//Define Y axis
+				var yAxis = d3.axisLeft()
+						   .scale(yScale_linear)
+						   .ticks(10);
+
+				//Define line generators
+				var line = d3.line()
+							.x(function(d) { return xScale(d.year); })
+							.y(function(d) { return yScale_linear(d.nums); })
+							.curve(d3.curveMonotoneX); // apply smoothing to the line;
+
+				//Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", w + margin.left + margin.right)
+							.attr("height", h + margin.top + margin.bottom)
+							.append("g")
+    						.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+				var eq = svg.selectAll(".eq")
+							.data(eqs)
+							.enter().append("g")
+							.attr("class", "eq");
+
+				//Create lines
+				eq.append("path")
+					.attr("class", "line")
+					.attr("d", function(d) { return line(d.values); })
+					.attr("data-legend",function(d) { return d.eq})
+					.style("stroke", function(d) { return colors[d.eq]; });
+
+				//---------------- Create axes ----------------------
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(0," + h + ")")
+					.call(xAxis)
+				
+				svg.append("text")  // x text label
+					.attr("class", "label")
+					.attr("transform", "translate(" + (w / 2) + " ," + (h + margin.top) + ")")
+					.style("text-anchor", "middle")
+					.text("Year");
+
+				svg.append("g")
+					.attr("class", "axis")
+					.call(yAxis)
+
+				svg.append("text")  // y text label
+					.attr("class", "label")
+					.attr("transform", "rotate(-90)")
+					.attr("x", - h / 2)
+					.attr("y", - margin.left / 2)
+					.style("text-anchor", "middle")
+					.text("Num of Earthquakes");
+				
+				// title
+				svg.append("text")  
+					.text("Earthquake Statistics for 2000-2015")
+					.attr("class", "title")
+					.attr("x", w / 2)
+					.attr("y", -20)
+					.attr("text-anchor", "middle");
+
+				// ------------------- legend -------------------
+				svg.selectAll("legend_rect")
+					.data(eqkeys)
+					.enter()
+					.append("rect")
+						.attr("x", legend_x)
+						.attr("y", function(d,i){ return legend_y + i*(legend_h+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+						.attr("width", legend_w)
+						.attr("height", legend_h)
+						.style("fill", function(d){ return colors[d]})
+				
+				svg.selectAll("legend_labels")
+					.data(eqkeys)
+					.enter()
+					.append("text")
+						.attr("class", "legend_labels")
+						.attr("x", legend_x + legend_w*1.3)
+						.attr("y", function(d,i){ return legend_y + 9 + i*(legend_h+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+						.text(function(d){ return d})
+						.attr("text-anchor", "left")
+										
+
+			});
+			
+		</script>
+	</body>
+</html>

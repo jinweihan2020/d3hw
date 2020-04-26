@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>HW2Q3 Line charts</title>
+		<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="linecharts.css">
+		<style></style>
+	</head>
+	<body>
+		<script type="text/javascript">
+
+			//Width and height
+			// Use the margin convention practice 
+			var margin = {top: 50, right: 50, bottom: 50, left: 100},
+  				w = 1000 - margin.left - margin.right, // Use the window's width 
+  				h = 550 - margin.top - margin.bottom; // Use the window's height
+
+			var parseTime = d3.timeParse("%Y");  //For converting strings to Dates
+			var formatTime = d3.timeFormat("%Y");  //For converting Dates to strings
+			
+			//Function for converting CSV values from strings to Dates and numbers
+			var rowConverter = function(d) {
+				return {
+					year: parseTime(d.year),
+					eq5: parseInt(d["5_5.9"]),  //Convert from string to int
+					eq6: parseInt(d["6_6.9"]),
+					eq7: parseInt(d["7_7.9"]),
+					eq8: parseInt(d["8.0+"])
+				};
+			}
+			
+			var colors = {'5_5.9': '#FFC300', '6_6.9': '#FF5733', '7_7.9': '#C70039', '8.0+': '#900C3F'}
+
+			//Load in data
+			d3.csv("earthquakes.csv", rowConverter).then(function(dataset) {
+
+				// Print data to console as table, for verification
+				// console.log(dataset);
+
+				//Create scale functions
+				var xScale = d3.scaleTime()
+							   .domain([
+									d3.min(dataset, function(d) { return d.year; }),
+									d3.max(dataset, function(d) { return d.year; })
+								])
+							   .range([0, w]);
+
+				var yScale_linear = d3.scaleLinear()
+								.domain([0, d3.max(dataset, function(d) { return d.eq5; })])
+								.range([h, 0]);
+
+				//Define axes
+				var xAxis = d3.axisBottom()
+						   .scale(xScale)
+						   .ticks(10)
+						   .tickFormat(formatTime);
+
+				//Define Y axis
+				var yAxis = d3.axisLeft()
+						   .scale(yScale_linear)
+						   .ticks(10);
+
+				//Define line generators
+				line5 = d3.line()
+							.x(function(d) { return xScale(d.year); })
+							.y(function(d) { return yScale_linear(d.eq5); })
+							.curve(d3.curveMonotoneX) // apply smoothing to the line;
+
+				line6 = d3.line()
+							.x(function(d) { return xScale(d.year); })
+							.y(function(d) { return yScale_linear(d.eq6); })
+							.curve(d3.curveMonotoneX);
+				
+				line7 = d3.line()
+							.x(function(d) { return xScale(d.year); })
+							.y(function(d) { return yScale_linear(d.eq7); })
+							.curve(d3.curveMonotoneX);
+				
+				line8 = d3.line()
+							.x(function(d) { return xScale(d.year); })
+							.y(function(d) { return yScale_linear(d.eq8); })
+							.curve(d3.curveMonotoneX);
+
+				//Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", w + margin.left + margin.right)
+							.attr("height", h + margin.top + margin.bottom)
+							.append("g")
+    						.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+				//Create lines
+				svg.append("path").datum(dataset).attr("class", "line5").attr("d", line5);
+				svg.append("path").datum(dataset).attr("class", "line6").attr("d", line6);
+				svg.append("path").datum(dataset).attr("class", "line7").attr("d", line7);
+				svg.append("path").datum(dataset).attr("class", "line8").attr("d", line8);
+
+				//---------------- Create axes ----------------------
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(0," + h + ")")
+					.call(xAxis)
+				
+				svg.append("text")  // x text label
+					.attr("class", "label")
+					.attr("transform", "translate(" + (w / 2) + " ," + (h + margin.top) + ")")
+					.style("text-anchor", "middle")
+					.text("Year");
+
+				svg.append("g")
+					.attr("class", "axis")
+					.call(yAxis)
+
+				svg.append("text")  // y text label
+					.attr("class", "label")
+					.attr("transform", "rotate(-90)")
+					.attr("x", - h / 2)
+					.attr("y", - margin.left / 2)
+					.style("text-anchor", "middle")
+					.text("Num of Earthquakes");
+				
+				// ------------------- legend -------------------
+				svg.selectAll("rect")
+					.append("rect")
+					.attr("class", "legend6")
+					.attr("x", w)
+					.attr("y", 0);
+				
+				// title
+				svg.append("text")  
+					.text("Earthquake Statistics for 2000-2015")
+					.attr("class", "title")
+					.attr("x", w / 2)
+					.attr("y", -20)
+					.attr("text-anchor", "middle");
+					
+
+			});
+			
+		</script>
+	</body>
+</html>

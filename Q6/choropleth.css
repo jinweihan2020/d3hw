@@ -1,0 +1,107 @@
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+/* line chart */
+.line {
+    fill: none;
+    stroke: #000;
+    stroke-width: 2px;
+}
+
+/* axis text */
+.axis text {
+    font-family: Helvetica, sans-serif;
+    font-size: 12px;
+    fill: black;
+}
+
+/* axis label */
+.label {
+    font-family: Helvetica, sans-serif;
+    font-size: 15px;
+    fill: black;
+}
+
+/* title */
+.title {
+    font-family: sans-serif;
+    font-size: 18px;
+    fill: black;
+    font-weight: bold;
+}
+
+.legend_labels {
+    font-family: "Times New Roman";
+    font-size: 12px;
+    fill: black;
+}
+
+.caption {
+    font-family: "Times New Roman";
+    font-size: 15px;
+    fill: black;
+    /* font-weight: bold; */
+}
+
+.username {
+    font-family: sans-serif;
+    font-size: 15px;
+    fill: black;
+}
+
+.dot {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.bar {
+    fill: blue;
+}
+
+.grid line {
+    stroke: lightgrey;
+    stroke-opacity: 0.9;
+    shape-rendering: crispEdges;
+}
+
+.grid path {
+    stroke-width: 0;
+}
+/* choropleth */
+.states {
+    fill: none;
+    stroke: black;
+    stroke-width: 0.7px;
+    stroke-linejoin: round;
+}
+
+.slider text{
+    font-size: 12px;
+}
+
+#tooltip {
+    position: absolute;
+    width: 200px;
+    height: auto;
+    padding: 10px;
+    background-color: black;
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    border-radius: 10px;
+    -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.d3-tip {
+    line-height: 1;
+    padding: 5px;
+    background: rgba(43, 43, 43, 0.8);
+    color: #fff;
+    border-radius: 2px;
+}

@@ -1,0 +1,12 @@
+Region,Year,Units Sold,Highest Sales Item,Sales Channel,Order Date,Item Profit
+Asia,2015,8250,Household,Offline,2015-01-16,1367272.5
+Asia,2016,6952,Cosmetics,Offline,2016-11-19,1208744.24
+Australia and Oceania,2015,2974,Baby Food,Online,2015-02-04,285087.64
+Central America and the Caribbean,2016,5498,Clothes,Offline,2016-07-25,403773.12
+Europe,2015,2847,Cosmetics,Offline,2015-02-23,495007.89
+Europe,2016,8867,Cosmetics,Online,2016-12-31,1541705.29
+Middle East and North Africa,2015,673,Fruits,Online,2015-08-14,1621.93
+Middle East and North Africa,2016,6489,Cosmetics,Online,2016-11-15,1128242.43
+North America,2015,5767,Personal Care,Offline,2015-07-30,144521.02
+Sub-Saharan Africa,2015,7342,Clothes,Offline,2015-04-25,539196.48
+Sub-Saharan Africa,2016,1485,Vegetables,Offline,2016-06-01,93748.05
