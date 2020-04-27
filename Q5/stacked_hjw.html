@@ -88,6 +88,9 @@ body {
 					// assume only one network request.
 					// if we have many, we should draw a sub plot
 					dataModelItem.eventBody.networkEventEntries.forEach(function (networkEventEntry) {
+						if ("CANCEL" === networkEventEntry.requestStatus) {
+							return;
+						}
 						networkEventEntry.networkTimingEntries.forEach(function(networkTiming) {
 							var phase = networkTiming.networkPhase;
 							if ("REQUEST" === phase) {
@@ -243,13 +246,13 @@ body {
 				    .attr("x", - h / 3)
 				    .attr("y", - margin.left *0.8)
 				    .style("text-anchor", "middle")
-				    .text("Phase in Page Load");
+				    .text("Page Keys");
 
 				svg.append("text")  // x text label
 				    .attr("class", "label")
 				    .attr("transform", "translate(" + (w / 2) + " ," + (h + margin.bottom/2) + ")")
 				    .style("text-anchor", "middle")
-				    .text("Page Key");
+				    .text("Page Load Time");
 
     			svg.selectAll(".data_row")
 					.data(phases_sum)
